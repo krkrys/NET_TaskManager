@@ -1,20 +1,24 @@
-﻿using System.Text;
+﻿using System.Data.SqlClient;
+using System.Text;
+using Dapper;
 using TaskManager.BusinessLogic;
-//TaskStatus już istnieje w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
-//Musimy rozwiązać konflikt nazw stosując alias.
-using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
 
 namespace TaskManager
 {
     public class Program
     {
-        private static TaskManagerService _taskManagerService = new TaskManagerService();
+        private const string ConnectionString = "Server=localhost,1433;Initial Catalog=TaskManager;User ID=sa;Password=P@ssw0rd;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;";
 
-        public static void Main()
+        private static TaskManagerService _taskManagerService = new TaskManagerService(new Repository(ConnectionString));
+        private static int _createdBy = 1;
+
+        public static async Task Main()
         {
+            // Console.WriteLine(await TestDbAsync());
             string command;
             do
             {
+                Console.WriteLine("0. Wyświetl użytkowników");
                 Console.WriteLine("1. Dodaj zadanie");
                 Console.WriteLine("2. Usuń zadanie");
                 Console.WriteLine("3. Pokaż szczegóły zadania");
@@ -22,39 +26,56 @@ namespace TaskManager
                 Console.WriteLine("5. Wyświetl zadania wg statusu");
                 Console.WriteLine("6. Szukaj zadania");
                 Console.WriteLine("7. Zmień status zadania");
-                Console.WriteLine("8. Zakończ");
+                Console.WriteLine("8. Przypisz zadanie");
+                Console.WriteLine("9. Zakończ");
 
                 command = Console.ReadLine().Trim();
 
                 switch (command)
                 {
+                    case "0":
+                        await DisplayAllUsersAsync();
+                        break;
                     case "1":
-                        AddTask();
+                        await AddTaskAsync();
                         break;
                     case "2":
-                        RemoveTask();
+                        await RemoveTaskAsync();
                         break;
                     case "3":
-                        ShowTaskDetails();
+                        await ShowTaskDetailsAsync();
                         break;
                     case "4":
-                        DisplayAllTasks();
+                        await DisplayAllTasksAsync();
                         break;
                     case "5":
-                        DisplayAllTasksByStatus();
+                        await DisplayAllTasksByStatusAsync();
                         break;
                     case "6":
-                        DisplaySearchedTasks();
+                        await DisplaySearchedTasksAsync();
                         break;
                     case "7":
-                        UpdateTaskStatus();
+                        await UpdateTaskStatusAsync();
+                        break;
+                    case "8":
+                        await AssignTaskAsync();
                         break;
                 }
                 Console.WriteLine("");
-            } while (command != "8");
+            } while (command != "9");
         }
 
-        private static void AddTask()
+        private static async Task DisplayAllUsersAsync()
+        {
+            var users = await _taskManagerService.GetAllUsersAsync();
+            Console.WriteLine($"Jest {users.Length} użytkowników:");
+            foreach (var user in users)
+            {
+                Console.WriteLine(user);
+            }
+        }
+
+        private static async Task AddTaskAsync()
         {
             Console.WriteLine("Podaj opis zadania:");
             var description = Console.ReadLine();
@@ -67,11 +88,11 @@ namespace TaskManager
                 dueDate = date;
             }
 
-            var task = _taskManagerService.Add(description, dueDate);
+            var task = await _taskManagerService.AddAsync(description, _createdBy, dueDate);
             WriteLineSuccess($"Dodano zadanie: {task}");
         }
 
-        private static void RemoveTask()
+        private static async Task RemoveTaskAsync()
         {
             Console.WriteLine("Podaj identyfikator zadania do usunięcia:");
             int taskId;
@@ -80,7 +101,7 @@ namespace TaskManager
                 Console.WriteLine("Podaj identyfikator zadania do usunięcia:");
             }
 
-            if (_taskManagerService.Remove(taskId))
+            if (await _taskManagerService.RemoveAsync(taskId))
             {
                 WriteLineSuccess($"Usunięto zadanie o numerze {taskId}");
             }
@@ -90,10 +111,10 @@ namespace TaskManager
             }
         }
 
-        private static void ShowTaskDetails()
+        private static async Task ShowTaskDetailsAsync()
         {
             var taskId = ReadTaskId();
-            var task = _taskManagerService.Get(taskId);
+            var task = await _taskManagerService.GetAsync(taskId);
             if (task == null)
             {
                 WriteLineError($"Nie można znaleźć zadania o numerze {taskId}");
@@ -103,6 +124,8 @@ namespace TaskManager
             var sb = new StringBuilder();
             sb.AppendLine(task.ToString());
             sb.AppendLine($"  Data utworzenia: {task.CreationDate}");
+            sb.AppendLine($"  Utworzone przez: {task.CreatedBy}");
+            sb.AppendLine($"  Przypisane do: {task.AssignedTo?.ToString() ?? ""}");
             sb.AppendLine($"  Data spodziewanego końca: {task.DueDate}");
             sb.AppendLine($"  Data startu: {task.StartDate}");
             sb.AppendLine($"  Data zakończenia: {task.DoneDate}");
@@ -110,35 +133,35 @@ namespace TaskManager
             Console.WriteLine(sb);
         }
 
-        private static void DisplayAllTasks()
+        private static async Task DisplayAllTasksAsync()
         {
-            var tasks = _taskManagerService.GetAll();
-            Console.WriteLine($"Masz {tasks.Length} zadań:");
+            var tasks = await _taskManagerService.GetAllAsync();
+            Console.WriteLine($"Jest {tasks.Length} zadań:");
             foreach (var task in tasks)
             {
                 Console.WriteLine(task);
             }
         }
 
-        private static void DisplayAllTasksByStatus()
+        private static async Task DisplayAllTasksByStatusAsync()
         {
-            var statuses = string.Join(", ", Enum.GetNames<TaskStatus>());
+            var statuses = string.Join(", ", Enum.GetNames<TaskItemStatus>());
             Console.WriteLine($"Podaj status: {statuses}");
-            TaskStatus status;
-            while (!Enum.TryParse<TaskStatus>(Console.ReadLine(), true, out status))
+            TaskItemStatus itemStatus;
+            while (!Enum.TryParse<TaskItemStatus>(Console.ReadLine(), true, out itemStatus))
             {
                 Console.WriteLine($"Podaj status: {statuses}");
             }
 
-            var tasks = _taskManagerService.GetAll(status);
-            Console.WriteLine($"Masz {tasks.Length} zadań ({status}):");
+            var tasks = await _taskManagerService.GetAllAsync(itemStatus);
+            Console.WriteLine($"Jest {tasks.Length} zadań ({itemStatus}):");
             foreach (var task in tasks)
             {
                 Console.WriteLine(task);
             }
         }
 
-        private static void DisplaySearchedTasks()
+        private static async Task DisplaySearchedTasksAsync()
         {
             Console.WriteLine($"Wyszukaj zadania o treści (możesz podać fragment):");
             string text;
@@ -152,7 +175,7 @@ namespace TaskManager
                 }
                 break;
             }
-            var tasks = _taskManagerService.GetAll(text);
+            var tasks = await _taskManagerService.GetAllAsync(text);
             Console.WriteLine($"Znaleziono {tasks.Length} zadań:");
             foreach (var task in tasks)
             {
@@ -160,24 +183,39 @@ namespace TaskManager
             }
         }
 
-        private static void UpdateTaskStatus()
+        private static async Task UpdateTaskStatusAsync()
         {
             var taskId = ReadTaskId();
-            var statuses = string.Join(", ", Enum.GetNames<TaskStatus>());
+            var statuses = string.Join(", ", Enum.GetNames<TaskItemStatus>());
             Console.WriteLine($"Podaj nowy status: {statuses}");
-            TaskStatus status;
-            while (!Enum.TryParse<TaskStatus>(Console.ReadLine(), true, out status))
+            TaskItemStatus itemStatus;
+            while (!Enum.TryParse<TaskItemStatus>(Console.ReadLine(), true, out itemStatus))
             {
                 Console.WriteLine($"Podaj nowy status: {statuses}");
             }
 
-            if (_taskManagerService.ChangeStatus(taskId, status))
+            if (await _taskManagerService.ChangeStatusAsync(taskId, itemStatus))
             {
                 WriteLineSuccess($"Zmieniono status zadania o numerze {taskId}");
             }
             else
             {
                 WriteLineError($"Nie można zmienić statusu zadania o numerze {taskId}");
+            }
+        }
+
+        private static async Task AssignTaskAsync()
+        {
+            var taskId = ReadTaskId();
+            var userId = ReadUserId();
+
+            if (await _taskManagerService.AssignToAsync(taskId, userId))
+            {
+                WriteLineSuccess($"Przypisano zadanie o numerze {taskId} do użytkownika {userId}");
+            }
+            else
+            {
+                WriteLineError($"Nie można przypisać zadania o numerze {taskId} do użytkownika {userId}");
             }
         }
 
@@ -192,6 +230,21 @@ namespace TaskManager
             return taskId;
         }
 
+        private static int? ReadUserId()
+        {
+            while (true)
+            {
+                Console.WriteLine("Podaj identyfikator użytkownika lub pozostaw puste, aby odpiąć użytkownika od zadania:");
+                var str = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(str))
+                    return null;
+
+                int userId;
+                if (int.TryParse(str, out userId))
+                    return userId;
+            }
+        }
+
         private static void WriteLineSuccess(string text)
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -204,6 +257,21 @@ namespace TaskManager
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(text);
             Console.ResetColor();
+        }
+
+        private static async Task<string> TestDbAsync()
+        {
+            using (var connection = new SqlConnection(ConnectionString))
+            {
+                var sql = @"SELECT CONCAT(
+    'Tabela TaskItems '
+    , CASE WHEN OBJECT_ID('TaskItems', 'U') IS NOT NULL THEN 'istnieje' ELSE 'nieistnieje' END
+    , CHAR(13)+CHAR(10)
+    , CONCAT('Tabela Users ', CASE WHEN OBJECT_ID('Users', 'U') IS NOT NULL THEN 'istnieje' ELSE 'nieistnieje' END)
+)";
+                var result = await connection.QueryFirstAsync<string>(sql);
+                return result;
+            }
         }
     }
 }

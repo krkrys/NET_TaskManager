@@ -2,63 +2,96 @@ namespace TaskManager.BusinessLogic
 {
     public class TaskManagerService
     {
-        private List<Task> _tasks = new List<Task>();
+        private readonly IRepository _repository;
 
-        public Task Add(string description, DateTime? dueDate)
+        public TaskManagerService(IRepository repository)
         {
-            var task = new Task(description, dueDate);
-            _tasks.Add(task);
-            return task;
+            _repository = repository;
         }
 
-        public bool Remove(int taskId)
+        public async Task<TaskItem> AddAsync(string description, int createdBy, DateTime? dueDate)
         {
-            var task = Get(taskId);
+            var user = await _repository.GetUserByIdAsync(createdBy);
+            var task = new TaskItem(0, description, user, dueDate);
+            var id = await _repository.CreateTaskItemAsync(task);
+            return await GetAsync(id);
+        }
+
+        public async Task<bool> RemoveAsync(int taskId)
+        {
+            var task = await GetAsync(taskId);
             if (task != null)
-                return _tasks.Remove(task);
+                return await _repository.DeleteTaskItemAsync(task.Id);
             return false;
         }
 
-        public Task Get(int taskId)
+        public async Task<TaskItem?> GetAsync(int taskId)
         {
-            return _tasks.Find(t => t.Id == taskId);
+            return await _repository.GetTaskItemByIdAsync(taskId);
         }
 
-        public Task[] GetAll()
+        public async Task<TaskItem[]> GetAllAsync()
         {
-            return _tasks.ToArray();
+            return await _repository.GetAllTaskItemsAsync();
         }
 
-        public Task[] GetAll(TaskStatus status)
+        public async Task<TaskItem[]> GetAllAsync(TaskItemStatus itemStatus)
         {
-            return _tasks.FindAll(t => t.Status == status).ToArray();
+            return await _repository.GetTaskItemsByStatusAsync(itemStatus);
         }
 
-        public Task[] GetAll(string description)
+        public async Task<TaskItem[]> GetAllAsync(string description)
         {
-            // Przeciążona wersja Contains przyjmuje drugi parametr jako opcje porównania tekstu,
-            // gdzie możemy wskazać, aby przy porównaniu pomijać wielkość liter
-            return _tasks.FindAll(t => t.Description.Contains(description, StringComparison.InvariantCultureIgnoreCase)).ToArray();
+            return await _repository.GetTaskItemsByDescriptionAsync(description);
         }
 
-        public bool ChangeStatus(int taskId, TaskStatus newStatus)
+        public async Task<bool> ChangeStatusAsync(int taskId, TaskItemStatus newStatus)
         {
-            var task = Get(taskId);
+            var task = await GetAsync(taskId);
             if (task == null || task?.Status == newStatus)
                 return false;
 
+            var result = ChangeStatus(task, newStatus);
+            if (result)
+            {
+                return await _repository.UpdateTaskItemAsync(task);
+            }
+
+            return false;
+        }
+
+        private bool ChangeStatus(TaskItem task, TaskItemStatus newStatus)
+        {
             switch (newStatus)
             {
-                case TaskStatus.ToDo:
+                case TaskItemStatus.ToDo:
                     return task.Open();
-                case TaskStatus.InProgress:
+                case TaskItemStatus.InProgress:
                     return task.Start();
-                case TaskStatus.Done:
+                case TaskItemStatus.Done:
                     return task.Done();
                 default:
                     return false;
             }
-            
+        }
+
+        public async Task<User[]> GetAllUsersAsync() => await _repository.GetAllUsersAsync();
+
+        public async Task<bool> AssignToAsync(int taskId, int? userId)
+        {
+            var task = await GetAsync(taskId);
+            if (task == null)
+                return false;
+
+            User? user = null;
+            if (userId.HasValue)
+            {
+                user = await _repository.GetUserByIdAsync(userId.Value);
+                if (user == null)
+                    return false;
+            }
+            task.AssignTo(user);
+            return await _repository.UpdateTaskItemAsync(task);
         }
     }
 }
