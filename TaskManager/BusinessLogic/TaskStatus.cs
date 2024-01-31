@@ -1,6 +1,6 @@
 namespace TaskManager.BusinessLogic
 {
-    public enum TaskItemStatus
+    public enum TaskStatus
     {
         ToDo,
         InProgress,

@@ -1,182 +1,131 @@
 using TaskManager.BusinessLogic;
+//TaskStatus już istnieje w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
+//Musimy rozwiązać konflikt nazw stosując alias.
+using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
 
 namespace TaskManager.Tests
 {
     public class TaskManagerServiceTests
     {
-        private readonly int _createdBy = 1;
-
         [Fact]
-        public async Task Should_AddTask_ToTaskList()
+        public void Should_AddTask_ToTaskList()
         {
-            var service = new TaskManagerService(new MockRepository());
+            var service = new TaskManagerService();
             
-            var task = await service.AddAsync("Test task", _createdBy, DateTime.Now.AddDays(5));
+            var task = service.Add("Test task", DateTime.Now.AddDays(5));
             
             Assert.NotNull(task);
-            Assert.Single(await service.GetAllAsync());
+            Assert.Single(service.GetAll());
         }
 
         [Fact]
-        public async Task Should_RemoveTask_ByTaskId()
+        public void Should_RemoveTask_ByTaskId()
         {
-            var service = new TaskManagerService(new MockRepository());
-            var task = await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            var task = service.Add("Test task", null);
 
-            bool result = await service.RemoveAsync(task.Id);
+            bool result = service.Remove(task.Id);
 
             Assert.True(result);
-            Assert.Empty(await service.GetAllAsync());
+            Assert.Empty(service.GetAll());
         }
 
         [Fact]
-        public async Task Should_NotRemoveTask_WhenTaskIdDoesNotExist()
+        public void Should_NotRemoveTask_WhenTaskIdDoesNotExist()
         {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            service.Add("Test task", null);
 
-            bool result = await service.RemoveAsync(999);
+            bool result = service.Remove(999);
 
             Assert.False(result);
-            Assert.Single(await service.GetAllAsync());
+            Assert.Single(service.GetAll());
         }
 
         [Fact]
-        public async Task Should_GetTask_ByTaskId()
+        public void Should_GetTask_ByTaskId()
         {
-            var service = new TaskManagerService(new MockRepository());
-            var task = await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            var task = service.Add("Test task", null);
 
-            var retrievedTask = await service.GetAsync(task.Id);
+            var retrievedTask = service.Get(task.Id);
 
             Assert.NotNull(retrievedTask);
             Assert.Equal(task.Id, retrievedTask.Id);
         }
 
         [Fact]
-        public async Task Should_GetAllTasks_WithNoFilter()
+        public void Should_GetAllTasks_WithNoFilter()
         {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task 1", _createdBy, null);
-            await service.AddAsync("Test task 2", _createdBy, null);
+            var service = new TaskManagerService();
+            service.Add("Test task 1", null);
+            service.Add("Test task 2", null);
 
-            var tasks = await service.GetAllAsync();
+            var tasks = service.GetAll();
 
             Assert.Equal(2, tasks.Length);
         }
 
         [Fact]
-        public async Task Should_GetTasks_ByStatus()
+        public void Should_GetTasks_ByStatus()
         {
-            var service = new TaskManagerService(new MockRepository());
-            var task1 = await service.AddAsync("Test task 1", _createdBy, null);
+            var service = new TaskManagerService();
+            var task1 = service.Add("Test task 1", null);
             task1.Start();
-            await service.AddAsync("Test task 2", _createdBy, null);
+            service.Add("Test task 2", null);
 
-            var inProgressTasks = await service.GetAllAsync(TaskItemStatus.InProgress);
+            var inProgressTasks = service.GetAll(TaskStatus.InProgress);
 
             Assert.Single(inProgressTasks);
             Assert.Equal(task1.Id, inProgressTasks.First().Id);
         }
 
         [Fact]
-        public async Task Should_GetTasks_ByDescription()
+        public void Should_GetTasks_ByDescription()
         {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Unique test task", _createdBy, null);
-            await service.AddAsync("Test task 2", _createdBy, null);
+            var service = new TaskManagerService();
+            service.Add("Unique test task", null);
+            service.Add("Test task 2", null);
 
-            var tasks = await service.GetAllAsync("Unique");
+            var tasks = service.GetAll("Unique");
 
             Assert.Single(tasks);
             Assert.Equal("Unique test task", tasks.First().Description);
         }
 
         [Fact]
-        public async Task Should_ChangeTaskStatus_WhenValid()
+        public void Should_ChangeTaskStatus_WhenValid()
         {
-            var service = new TaskManagerService(new MockRepository());
-            var task = await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            var task = service.Add("Test task", null);
 
-            bool result = await service.ChangeStatusAsync(task.Id, TaskItemStatus.InProgress);
+            bool result = service.ChangeStatus(task.Id, TaskStatus.InProgress);
 
             Assert.True(result);
-            Assert.Equal(TaskItemStatus.InProgress, task.Status);
+            Assert.Equal(TaskStatus.InProgress, task.Status);
         }
 
         [Fact]
-        public async Task Should_NotChangeTaskStatus_WhenInvalidTransition()
+        public void Should_NotChangeTaskStatus_WhenInvalidTransition()
         {
-            var service = new TaskManagerService(new MockRepository());
-            var task = await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            var task = service.Add("Test task", null);
 
-            bool result = await service.ChangeStatusAsync(task.Id, TaskItemStatus.Done);
+            bool result = service.ChangeStatus(task.Id, TaskStatus.Done);
 
             Assert.False(result);
-            Assert.Equal(TaskItemStatus.ToDo, task.Status);
+            Assert.Equal(TaskStatus.ToDo, task.Status);
         }
 
         [Fact]
-        public async Task Should_NotChangeTaskStatus_WhenTaskIdDoesNotExist()
+        public void Should_NotChangeTaskStatus_WhenTaskIdDoesNotExist()
         {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task", _createdBy, null);
+            var service = new TaskManagerService();
+            service.Add("Test task", null);
 
-            bool result = await service.ChangeStatusAsync(999, TaskItemStatus.Done);
+            bool result = service.ChangeStatus(999, TaskStatus.Done);
 
             Assert.False(result);
-        }
-
-        [Fact]
-        public async void Should_Assign_ExistingUser_To_ExistingTask()
-        {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task", _createdBy, null);
-
-            var result = await service.AssignToAsync(1, _createdBy);
-
-            var task = await service.GetAsync(1);
-            Assert.True(result);
-            Assert.Equal(_createdBy, task.AssignedTo.Id);
-        }
-
-        [Fact]
-        public async void Should_Unassign_User_From_Task()
-        {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task", _createdBy, null);
-            await service.AssignToAsync(1, _createdBy);
-
-            var result = await service.AssignToAsync(1, null);
-
-            var task = await service.GetAsync(1);
-            Assert.True(result);
-            Assert.Null(task.AssignedTo);
-        }
-
-        [Fact]
-        public async void Should_NotAssign_NotExistingUser_To_ExistingTask()
-        {
-            var service = new TaskManagerService(new MockRepository());
-            await service.AddAsync("Test task", _createdBy, null);
-
-            var result = await service.AssignToAsync(1, 999);
-
-            var task = await service.GetAsync(1);
-            Assert.False(result);
-            Assert.Null(task.AssignedTo);
-        }
-
-        [Fact]
-        public async void Should_NotAssign_ExistingUser_To_NotExistingTask()
-        {
-            var service = new TaskManagerService(new MockRepository());
-
-            var result = await service.AssignToAsync(1, 1);
-
-            var task = await service.GetAsync(1);
-            Assert.False(result);
-            Assert.Null(task);
         }
     }
 }

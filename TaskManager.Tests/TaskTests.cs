@@ -1,25 +1,26 @@
-using TaskManager.BusinessLogic;
+//Task i TaskStatus już istnieją w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
+//Musimy rozwiązać konflikt nazw stosując aliasy.
+using Task = TaskManager.BusinessLogic.Task;
+using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
 
 namespace TaskManager.Tests
 {
-    public class TaskItemTests
+    public class TaskTests
     {
-        private User _createdBy = new User(1, "Ja");
-
         [Fact]
         public void Should_CreateTask_WithAutoIncrementedId()
         {
-            var task1 = new TaskItem(1, "Test task 1", _createdBy, null);
-            var task2 = new TaskItem(2, "Test task 2", _createdBy, null);
+            var task1 = new Task("Test task 1", null);
+            var task2 = new Task("Test task 2", null);
 
             Assert.True(task1.Id > 0);
-            Assert.True(task1.Id < task2.Id);
+            Assert.Equal(task1.Id + 1, task2.Id);
         }
 
         [Fact]
         public void Should_SetCreationDate_WhenCreatingTask()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
             var difference = DateTime.Now - task.CreationDate;
 
             Assert.True(difference.TotalSeconds < 1);
@@ -29,7 +30,7 @@ namespace TaskManager.Tests
         public void Should_SetDueDate_WhenProvided()
         {
             var dueDate = DateTime.Now.AddDays(7);
-            var task = new TaskItem(1, "Test task", _createdBy, dueDate);
+            var task = new Task("Test task", dueDate);
 
             Assert.Equal(dueDate, task.DueDate);
         }
@@ -37,26 +38,26 @@ namespace TaskManager.Tests
         [Fact]
         public void Should_SetStatusToTodo_WhenTaskIsCreated()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
 
-            Assert.Equal(TaskItemStatus.ToDo, task.Status);
+            Assert.Equal(TaskStatus.ToDo, task.Status);
         }
 
         [Fact]
         public void Should_ChangeStatus_ToInProgress_WhenStartIsCalled()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
 
             bool result = task.Start();
 
             Assert.True(result);
-            Assert.Equal(TaskItemStatus.InProgress, task.Status);
+            Assert.Equal(TaskStatus.InProgress, task.Status);
         }
 
         [Fact]
         public void Should_SetStartDate_WhenStartIsCalled()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
 
             task.Start();
 
@@ -68,31 +69,31 @@ namespace TaskManager.Tests
         [Fact]
         public void Should_NotChangeStatus_ToInProgress_IfAlreadyInProgress()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
             task.Start();
 
             bool result = task.Start();
 
             Assert.False(result);
-            Assert.Equal(TaskItemStatus.InProgress, task.Status);
+            Assert.Equal(TaskStatus.InProgress, task.Status);
         }
 
         [Fact]
         public void Should_ChangeStatus_ToDone_WhenDoneIsCalledAndStatusIsInProgress()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
             task.Start();
 
             bool result = task.Done();
 
             Assert.True(result);
-            Assert.Equal(TaskItemStatus.Done, task.Status);
+            Assert.Equal(TaskStatus.Done, task.Status);
         }
 
         [Fact]
         public void Should_SetDoneDate_WhenDoneIsCalled()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
             task.Start();
 
             task.Done();
@@ -105,18 +106,18 @@ namespace TaskManager.Tests
         [Fact]
         public void Should_NotChangeStatus_ToDone_IfStatusIsNotInProgress()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
 
             bool result = task.Done();
 
             Assert.False(result);
-            Assert.Equal(TaskItemStatus.ToDo, task.Status);
+            Assert.Equal(TaskStatus.ToDo, task.Status);
         }
 
         [Fact]
         public void Should_CalculateDuration_WhenStatusIsInProgress()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
             task.Start();
 
             var duration = task.Duration;
@@ -127,32 +128,11 @@ namespace TaskManager.Tests
         [Fact]
         public void Should_ReturnNullDuration_WhenStatusIsTodo()
         {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
+            var task = new Task("Test task", null);
 
             var duration = task.Duration;
 
             Assert.Null(duration);
-        }
-
-        [Fact]
-        public void Should_AssignTo_User()
-        {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
-
-            task.AssignTo(_createdBy);
-
-            Assert.Equal(_createdBy, task.AssignedTo);
-        }
-
-        [Fact]
-        public void Should_Unassign_User_When_Null_Passed()
-        {
-            var task = new TaskItem(1, "Test task", _createdBy, null);
-            task.AssignTo(_createdBy);
-
-            task.AssignTo(null);
-
-            Assert.Null(task.AssignedTo);
         }
     }
 }
