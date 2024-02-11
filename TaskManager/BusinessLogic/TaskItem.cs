@@ -1,8 +1,9 @@
 namespace TaskManager.BusinessLogic
 {
-    public class Task
+    public class TaskItem
     {
-        private static int _id;
+        private User? _assignedTo = null;
+        private User _createdBy;
 
         public int Id { get; }
 
@@ -18,22 +19,31 @@ namespace TaskManager.BusinessLogic
 
         public TimeSpan? Duration => StartDate != null ? (DoneDate ?? DateTime.Now) - StartDate.Value : null;
 
-        public TaskStatus Status { get; private set; } = TaskStatus.ToDo;
+        public TaskItemStatus Status { get; private set; } = TaskItemStatus.ToDo;
 
-        public Task(string description, DateTime? dueDate)
+        public User CreatedBy => _createdBy;
+
+        public User? AssignedTo => _assignedTo;
+
+        public TaskItem(int id, string description, User createdBy, DateTime? dueDate)
         {
-            Id = ++_id;
+            Id = id;
             Description = description;
+            _createdBy = createdBy;
             CreationDate = DateTime.Now;
             DueDate = dueDate;
         }
 
+        private TaskItem()
+        {
+        }
+
         public bool Start()
         {
-            if (Status == TaskStatus.InProgress)
+            if (Status == TaskItemStatus.InProgress)
                 return false;
 
-            Status = TaskStatus.InProgress;
+            Status = TaskItemStatus.InProgress;
             StartDate = DateTime.Now;
             DoneDate = null;
             return true;
@@ -41,10 +51,10 @@ namespace TaskManager.BusinessLogic
 
         public bool Open()
         {
-            if (Status == TaskStatus.ToDo)
+            if (Status == TaskItemStatus.ToDo)
                 return false;
 
-            Status = TaskStatus.ToDo;
+            Status = TaskItemStatus.ToDo;
             StartDate = null;
             DoneDate = null;
             return true;
@@ -52,17 +62,22 @@ namespace TaskManager.BusinessLogic
 
         public bool Done()
         {
-            if (Status != TaskStatus.InProgress)
+            if (Status != TaskItemStatus.InProgress)
                 return false;
 
-            Status = TaskStatus.Done;
+            Status = TaskItemStatus.Done;
             DoneDate = DateTime.Now;
             return true;
         }
 
+        public void AssignTo(User? assignedTo)
+        {
+            _assignedTo = assignedTo ?? null;
+        }
+
         public override string ToString()
         {
-            return $"{Id} - {Description} ({Status})";
+            return AssignedTo != null ? $"{Id} - {Description} ({Status}) {AssignedTo.Name}" : $"{Id} - {Description} ({Status})";
         }
     }
 }

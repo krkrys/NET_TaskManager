@@ -2,58 +2,60 @@ namespace TaskManager.BusinessLogic
 {
     public class TaskManagerService
     {
-        private List<Task> _tasks = new List<Task>();
+        private static int _id=0;
 
-        public Task Add(string description, DateTime? dueDate)
+        private List<TaskItem> _tasks = new List<TaskItem>();
+
+        public async Task<TaskItem> AddAsync(string description, DateTime? dueDate)
         {
-            var task = new Task(description, dueDate);
+            var task = new TaskItem(description, dueDate);
             _tasks.Add(task);
             return task;
         }
 
-        public bool Remove(int taskId)
+        public async Task<bool> RemoveAsync(int taskId)
         {
-            var task = Get(taskId);
+            var task = await GetAsync(taskId);
             if (task != null)
                 return _tasks.Remove(task);
             return false;
         }
 
-        public Task Get(int taskId)
+        public async Task<TaskItem> GetAsync(int taskId)
         {
             return _tasks.Find(t => t.Id == taskId);
         }
 
-        public Task[] GetAll()
+        public async Task<TaskItem[]> GetAllAsync()
         {
             return _tasks.ToArray();
         }
 
-        public Task[] GetAll(TaskStatus status)
+        public async Task<TaskItem[]> GetAllAsync(TaskItemStatus status)
         {
             return _tasks.FindAll(t => t.Status == status).ToArray();
         }
 
-        public Task[] GetAll(string description)
+        public async Task<TaskItem[]> GetAllAsync(string description)
         {
             // Przeciążona wersja Contains przyjmuje drugi parametr jako opcje porównania tekstu,
             // gdzie możemy wskazać, aby przy porównaniu pomijać wielkość liter
             return _tasks.FindAll(t => t.Description.Contains(description, StringComparison.InvariantCultureIgnoreCase)).ToArray();
         }
 
-        public bool ChangeStatus(int taskId, TaskStatus newStatus)
+        public async Task<bool> ChangeStatusAsync(int taskId, TaskItemStatus newStatus)
         {
-            var task = Get(taskId);
+            var task = await GetAsync(taskId);
             if (task == null || task?.Status == newStatus)
                 return false;
 
             switch (newStatus)
             {
-                case TaskStatus.ToDo:
+                case TaskItemStatus.ToDo:
                     return task.Open();
-                case TaskStatus.InProgress:
+                case TaskItemStatus.InProgress:
                     return task.Start();
-                case TaskStatus.Done:
+                case TaskItemStatus.Done:
                     return task.Done();
                 default:
                     return false;

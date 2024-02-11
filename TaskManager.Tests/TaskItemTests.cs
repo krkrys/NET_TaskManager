@@ -1,11 +1,11 @@
 //Task i TaskStatus już istnieją w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
 //Musimy rozwiązać konflikt nazw stosując aliasy.
-using Task = TaskManager.BusinessLogic.Task;
-using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
+using Task = TaskManager.BusinessLogic.TaskItem;
+using TaskItemStatus = TaskManager.BusinessLogic.TaskItemStatus;
 
 namespace TaskManager.Tests
 {
-    public class TaskTests
+    public class TaskItemTests
     {
         [Fact]
         public void Should_CreateTask_WithAutoIncrementedId()
@@ -40,7 +40,7 @@ namespace TaskManager.Tests
         {
             var task = new Task("Test task", null);
 
-            Assert.Equal(TaskStatus.ToDo, task.Status);
+            Assert.Equal(TaskItemStatus.ToDo, task.Status);
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace TaskManager.Tests
             bool result = task.Start();
 
             Assert.True(result);
-            Assert.Equal(TaskStatus.InProgress, task.Status);
+            Assert.Equal(TaskItemStatus.InProgress, task.Status);
         }
 
         [Fact]
@@ -75,7 +75,7 @@ namespace TaskManager.Tests
             bool result = task.Start();
 
             Assert.False(result);
-            Assert.Equal(TaskStatus.InProgress, task.Status);
+            Assert.Equal(TaskItemStatus.InProgress, task.Status);
         }
 
         [Fact]
@@ -87,7 +87,7 @@ namespace TaskManager.Tests
             bool result = task.Done();
 
             Assert.True(result);
-            Assert.Equal(TaskStatus.Done, task.Status);
+            Assert.Equal(TaskItemStatus.Done, task.Status);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace TaskManager.Tests
             bool result = task.Done();
 
             Assert.False(result);
-            Assert.Equal(TaskStatus.ToDo, task.Status);
+            Assert.Equal(TaskItemStatus.ToDo, task.Status);
         }
 
         [Fact]

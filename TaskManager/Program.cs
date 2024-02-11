@@ -2,7 +2,7 @@
 using TaskManager.BusinessLogic;
 //TaskStatus już istnieje w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
 //Musimy rozwiązać konflikt nazw stosując alias.
-using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
+using TaskItemStatus = TaskManager.BusinessLogic.TaskItemStatus;
 
 namespace TaskManager
 {
@@ -10,7 +10,7 @@ namespace TaskManager
     {
         private static TaskManagerService _taskManagerService = new TaskManagerService();
 
-        public static void Main()
+        static async Task Main()
         {
             string command;
             do
@@ -29,32 +29,32 @@ namespace TaskManager
                 switch (command)
                 {
                     case "1":
-                        AddTask();
+                        AddTaskAsync();
                         break;
                     case "2":
-                        RemoveTask();
+                        RemoveTaskAsync();
                         break;
                     case "3":
-                        ShowTaskDetails();
+                        ShowTaskDetailsAsync();
                         break;
                     case "4":
-                        DisplayAllTasks();
+                        DisplayAllTasksAsync();
                         break;
                     case "5":
-                        DisplayAllTasksByStatus();
+                        DisplayAllTasksByStatusAsync();
                         break;
                     case "6":
-                        DisplaySearchedTasks();
+                        DisplaySearchedTasksAsync();
                         break;
                     case "7":
-                        UpdateTaskStatus();
+                        UpdateTaskStatusAsync();
                         break;
                 }
                 Console.WriteLine("");
             } while (command != "8");
         }
 
-        private static void AddTask()
+        private static async Task AddTaskAsync()
         {
             Console.WriteLine("Podaj opis zadania:");
             var description = Console.ReadLine();
@@ -67,11 +67,11 @@ namespace TaskManager
                 dueDate = date;
             }
 
-            var task = _taskManagerService.Add(description, dueDate);
+            var task = await _taskManagerService.AddAsync(description, dueDate);
             WriteLineSuccess($"Dodano zadanie: {task}");
         }
 
-        private static void RemoveTask()
+        private static async Task RemoveTaskAsync()
         {
             Console.WriteLine("Podaj identyfikator zadania do usunięcia:");
             int taskId;
@@ -80,7 +80,7 @@ namespace TaskManager
                 Console.WriteLine("Podaj identyfikator zadania do usunięcia:");
             }
 
-            if (_taskManagerService.Remove(taskId))
+            if (await _taskManagerService.RemoveAsync(taskId))
             {
                 WriteLineSuccess($"Usunięto zadanie o numerze {taskId}");
             }
@@ -90,10 +90,10 @@ namespace TaskManager
             }
         }
 
-        private static void ShowTaskDetails()
+        private static async Task ShowTaskDetailsAsync()
         {
             var taskId = ReadTaskId();
-            var task = _taskManagerService.Get(taskId);
+            var task = await _taskManagerService.GetAsync(taskId);
             if (task == null)
             {
                 WriteLineError($"Nie można znaleźć zadania o numerze {taskId}");
@@ -110,9 +110,9 @@ namespace TaskManager
             Console.WriteLine(sb);
         }
 
-        private static void DisplayAllTasks()
+        private static async Task DisplayAllTasksAsync()
         {
-            var tasks = _taskManagerService.GetAll();
+            var tasks = await _taskManagerService.GetAllAsync();
             Console.WriteLine($"Masz {tasks.Length} zadań:");
             foreach (var task in tasks)
             {
@@ -120,17 +120,17 @@ namespace TaskManager
             }
         }
 
-        private static void DisplayAllTasksByStatus()
+        private static async Task DisplayAllTasksByStatusAsync()
         {
-            var statuses = string.Join(", ", Enum.GetNames<TaskStatus>());
+            var statuses = string.Join(", ", Enum.GetNames<TaskItemStatus>());
             Console.WriteLine($"Podaj status: {statuses}");
-            TaskStatus status;
-            while (!Enum.TryParse<TaskStatus>(Console.ReadLine(), true, out status))
+            TaskItemStatus status;
+            while (!Enum.TryParse<TaskItemStatus>(Console.ReadLine(), true, out status))
             {
                 Console.WriteLine($"Podaj status: {statuses}");
             }
 
-            var tasks = _taskManagerService.GetAll(status);
+            var tasks = await _taskManagerService.GetAllAsync(status);
             Console.WriteLine($"Masz {tasks.Length} zadań ({status}):");
             foreach (var task in tasks)
             {
@@ -138,7 +138,7 @@ namespace TaskManager
             }
         }
 
-        private static void DisplaySearchedTasks()
+        private static async Task DisplaySearchedTasksAsync()
         {
             Console.WriteLine($"Wyszukaj zadania o treści (możesz podać fragment):");
             string text;
@@ -152,7 +152,7 @@ namespace TaskManager
                 }
                 break;
             }
-            var tasks = _taskManagerService.GetAll(text);
+            var tasks = await _taskManagerService.GetAllAsync(text);
             Console.WriteLine($"Znaleziono {tasks.Length} zadań:");
             foreach (var task in tasks)
             {
@@ -160,18 +160,18 @@ namespace TaskManager
             }
         }
 
-        private static void UpdateTaskStatus()
+        private static async Task UpdateTaskStatusAsync()
         {
             var taskId = ReadTaskId();
-            var statuses = string.Join(", ", Enum.GetNames<TaskStatus>());
+            var statuses = string.Join(", ", Enum.GetNames<TaskItemStatus>());
             Console.WriteLine($"Podaj nowy status: {statuses}");
-            TaskStatus status;
-            while (!Enum.TryParse<TaskStatus>(Console.ReadLine(), true, out status))
+            TaskItemStatus status;
+            while (!Enum.TryParse<TaskItemStatus>(Console.ReadLine(), true, out status))
             {
                 Console.WriteLine($"Podaj nowy status: {statuses}");
             }
 
-            if (_taskManagerService.ChangeStatus(taskId, status))
+            if (await _taskManagerService.ChangeStatusAsync(taskId, status))
             {
                 WriteLineSuccess($"Zmieniono status zadania o numerze {taskId}");
             }

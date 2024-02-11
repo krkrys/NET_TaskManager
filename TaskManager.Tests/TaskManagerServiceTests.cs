@@ -1,129 +1,129 @@
 using TaskManager.BusinessLogic;
 //TaskStatus już istnieje w przestrzeni System.Threading.Tasks, która jest automatycznie importowana.
 //Musimy rozwiązać konflikt nazw stosując alias.
-using TaskStatus = TaskManager.BusinessLogic.TaskStatus;
+using TaskItemStatus = TaskManager.BusinessLogic.TaskItemStatus;
 
 namespace TaskManager.Tests
 {
     public class TaskManagerServiceTests
     {
         [Fact]
-        public void Should_AddTask_ToTaskList()
+        public async Task Should_AddTask_ToTaskListAsync()
         {
             var service = new TaskManagerService();
             
-            var task = service.Add("Test task", DateTime.Now.AddDays(5));
+            var task = await service.AddAsync("Test task", DateTime.Now.AddDays(5));
             
             Assert.NotNull(task);
-            Assert.Single(service.GetAll());
+            Assert.Single(await service.GetAllAsync());
         }
 
         [Fact]
-        public void Should_RemoveTask_ByTaskId()
+        public async Task Should_RemoveTask_ByTaskIdAsync()
         {
             var service = new TaskManagerService();
-            var task = service.Add("Test task", null);
+            var task = await service.AddAsync("Test task", null);
 
-            bool result = service.Remove(task.Id);
+            bool result = await service.RemoveAsync(task.Id);
 
             Assert.True(result);
-            Assert.Empty(service.GetAll());
+            Assert.Empty(await service.GetAllAsync());
         }
 
         [Fact]
-        public void Should_NotRemoveTask_WhenTaskIdDoesNotExist()
+        public async Task Should_NotRemoveTask_WhenTaskIdDoesNotExistAsync()
         {
             var service = new TaskManagerService();
-            service.Add("Test task", null);
+            await service.AddAsync("Test task", null);
 
-            bool result = service.Remove(999);
+            bool result = await service.RemoveAsync(999);
 
             Assert.False(result);
-            Assert.Single(service.GetAll());
+            Assert.Single(await service.GetAllAsync());
         }
 
         [Fact]
-        public void Should_GetTask_ByTaskId()
+        public async Task Should_GetTask_ByTaskIdAsync()
         {
             var service = new TaskManagerService();
-            var task = service.Add("Test task", null);
+            var task = await service.AddAsync("Test task", null);
 
-            var retrievedTask = service.Get(task.Id);
+            var retrievedTask = await service.GetAsync(task.Id);
 
             Assert.NotNull(retrievedTask);
             Assert.Equal(task.Id, retrievedTask.Id);
         }
 
         [Fact]
-        public void Should_GetAllTasks_WithNoFilter()
+        public async Task Should_GetAllTasks_WithNoFilterAsync()
         {
             var service = new TaskManagerService();
-            service.Add("Test task 1", null);
-            service.Add("Test task 2", null);
+            await service.AddAsync("Test task 1", null);
+            await service.AddAsync("Test task 2", null);
 
-            var tasks = service.GetAll();
+            var tasks = await service.GetAllAsync();
 
             Assert.Equal(2, tasks.Length);
         }
 
         [Fact]
-        public void Should_GetTasks_ByStatus()
+        public async Task Should_GetTasks_ByStatusAsync()
         {
             var service = new TaskManagerService();
-            var task1 = service.Add("Test task 1", null);
+            var task1 = await service.AddAsync("Test task 1", null);
             task1.Start();
-            service.Add("Test task 2", null);
+            await service.AddAsync("Test task 2", null);
 
-            var inProgressTasks = service.GetAll(TaskStatus.InProgress);
+            var inProgressTasks = await service.GetAllAsync(TaskItemStatus.InProgress);
 
             Assert.Single(inProgressTasks);
             Assert.Equal(task1.Id, inProgressTasks.First().Id);
         }
 
         [Fact]
-        public void Should_GetTasks_ByDescription()
+        public async Task Should_GetTasks_ByDescriptionAsync()
         {
             var service = new TaskManagerService();
-            service.Add("Unique test task", null);
-            service.Add("Test task 2", null);
+            await service.AddAsync("Unique test task", null);
+            await service.AddAsync("Test task 2", null);
 
-            var tasks = service.GetAll("Unique");
+            var tasks = await service.GetAllAsync("Unique");
 
             Assert.Single(tasks);
             Assert.Equal("Unique test task", tasks.First().Description);
         }
 
         [Fact]
-        public void Should_ChangeTaskStatus_WhenValid()
+        public async Task Should_ChangeTaskStatus_WhenValidAsync()
         {
             var service = new TaskManagerService();
-            var task = service.Add("Test task", null);
+            var task = await service.AddAsync("Test task", null);
 
-            bool result = service.ChangeStatus(task.Id, TaskStatus.InProgress);
+            bool result = await service.ChangeStatusAsync(task.Id, TaskItemStatus.InProgress);
 
             Assert.True(result);
-            Assert.Equal(TaskStatus.InProgress, task.Status);
+            Assert.Equal(TaskItemStatus.InProgress, task.Status);
         }
 
         [Fact]
-        public void Should_NotChangeTaskStatus_WhenInvalidTransition()
+        public async Task Should_NotChangeTaskStatus_WhenInvalidTransitionAsync()
         {
             var service = new TaskManagerService();
-            var task = service.Add("Test task", null);
+            var task = await service.AddAsync("Test task", null);
 
-            bool result = service.ChangeStatus(task.Id, TaskStatus.Done);
+            bool result = await service.ChangeStatusAsync(task.Id, TaskItemStatus.Done);
 
             Assert.False(result);
-            Assert.Equal(TaskStatus.ToDo, task.Status);
+            Assert.Equal(TaskItemStatus.ToDo, task.Status);
         }
 
         [Fact]
-        public void Should_NotChangeTaskStatus_WhenTaskIdDoesNotExist()
+        public async Task Should_NotChangeTaskStatus_WhenTaskIdDoesNotExistAsync()
         {
             var service = new TaskManagerService();
-            service.Add("Test task", null);
+            await service.AddAsync("Test task", null);
 
-            bool result = service.ChangeStatus(999, TaskStatus.Done);
+            bool result = await service.ChangeStatusAsync(999, TaskItemStatus.Done);
 
             Assert.False(result);
         }
